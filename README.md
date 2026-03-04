@@ -11,7 +11,7 @@ Reference: _Kenneth W Latimer, Fred Rieke, Jonathan W Pillow_ (2019) **Inferring
 import torch
 from utils import CBEM, convolveStimulusWithBasis_torch, makeRaisedCosBasis
 
-dt = 1e-3
+dt = 1e-4
 model = CBEM(binsize_s=dt)
 
 # Build temporal basis and design matrix
