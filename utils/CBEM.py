@@ -1,6 +1,10 @@
 import torch
 import torch.nn as nn
-from .cbem_utils import *
+from .cbem_utils import (
+    firingRateNonlinearity,
+    get_voltage_exp_recurrence,
+    logOnePlusExpX_torch,
+)
 
 
 # # ----------------------------
