@@ -88,7 +88,13 @@ def logOnePlusExpX_torch(x, maxG):
 #         V[t] = v_prev
 #     return V
 
-def get_voltage_exp_recurrence(gs, E_s, g_l, E_l, V0, dt_s, eps=1e-12, chunk=256):
+def get_voltage_exp_recurrence(gs, 
+                               E_s, 
+                               g_l,
+                               E_l, 
+                               V0, 
+                               dt_s, 
+                               eps=1e-12, chunk=256):
     """
     Exact same recurrence as the for-loop:
         v <- a[t]*v + (1-a[t])*Vinf[t]
@@ -121,6 +127,57 @@ def get_voltage_exp_recurrence(gs, E_s, g_l, E_l, V0, dt_s, eps=1e-12, chunk=256
         v_prev = V_c[-1]
 
     return V
+
+def get_voltage_exp_recurrence_batched_loop(
+    gs_bt2: torch.Tensor,  # [B,T,2]
+    E_s: torch.Tensor,     # [2]
+    g_l: torch.Tensor,     # scalar
+    E_l: torch.Tensor,     # scalar
+    V0: torch.Tensor,      # scalar
+    dt_s: float,
+    eps: float = 1e-12,
+    chunk: int = 256,
+) -> torch.Tensor:
+    """
+    Batched solver:
+      - vectorized over trials (B)
+      - processes time in chunks (optional)
+    Returns V: [B,T]
+    """
+    B, T, _ = gs_bt2.shape
+
+    gs = gs_bt2.to(torch.float64)
+
+    E_s64 = E_s.to(gs.device, torch.float64)
+    E_l64 = E_l.to(gs.device, torch.float64)
+    g_l64 = g_l.to(gs.device, torch.float64)
+    V064  = V0.to(gs.device, torch.float64)
+
+    g_tot = g_l64 + gs.sum(dim=-1)                        # [B,T]
+    I_tot = E_l64 * g_l64 + (gs * E_s64).sum(dim=-1)      # [B,T]
+    E_inf = I_tot / (g_tot + eps)                         # [B,T]
+
+    a = torch.exp(-dt_s * g_tot)                          # [B,T]
+    b = (1.0 - a) * E_inf                                 # [B,T]
+
+    V = torch.empty((B, T), device=gs.device, dtype=torch.float64)
+    v_prev = V064.expand(B).clone()                       # [B]
+
+    for start in range(0, T, chunk):
+        end = min(start + chunk, T)
+
+        a_c = a[:, start:end]                             # [B,C]
+        b_c = b[:, start:end]                             # [B,C]
+
+        # Within-chunk closed form (over time dim=1)
+        P = torch.cumprod(a_c, dim=1)                     # [B,C]
+        S = torch.cumsum(b_c / (P + eps), dim=1)          # [B,C]
+        V_c = P * (v_prev[:, None] + S)                   # [B,C]
+
+        V[:, start:end] = V_c
+        v_prev = V_c[:, -1]                               # [B]
+
+    return V.to(gs_bt2.dtype)
 
 def firingRateNonlinearity(V_t, alpha, mu, beta):
     return alpha * F.softplus((V_t - mu) / beta)
