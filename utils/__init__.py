@@ -4,10 +4,9 @@ from .cbem_utils import (
     convolveStimulusWithBasis_torch,
     firingRateNonlinearity,
     get_voltage_exp_recurrence,
-    logOnePlusExpX_torch,
-)
-from .load_matlab import flatten_cell, load_mat_v73
+    logOnePlusExpX_torch)
 
+from .loss import cbem_penalized_nll
 __all__ = [
     "CBEM",
     "makeRaisedCosBasis",
@@ -15,6 +14,5 @@ __all__ = [
     "firingRateNonlinearity",
     "get_voltage_exp_recurrence",
     "logOnePlusExpX_torch",
-    "flatten_cell",
-    "load_mat_v73",
+    "cbem_penalized_nll"
 ]

@@ -52,3 +52,7 @@ Main imports exposed from `utils`:
 
 - Use `simulateSpikeTrains(..., seed=...)` for deterministic sampling.
 - `CBEM.voltage` computes recurrence in `float64` then casts back for better numerical stability.
+
+
+## TODO:
+- Initialize filters using linear model for k_e and k_i = -k_e
