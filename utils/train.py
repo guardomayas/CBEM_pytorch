@@ -1,5 +1,8 @@
 import torch
 from .loss import cbem_penalized_nll_trials
+import torch
+from .loss import cbem_penalized_nll_trials
+
 def train_cbem_trials(
     model,
     X_cond: torch.Tensor,                 # [B,T,D]
@@ -23,10 +26,37 @@ def train_cbem_trials(
     if len(spkTimes_bins) != B:
         raise ValueError(f"len(spkTimes_bins) must be {B}, got {len(spkTimes_bins)}")
 
-    # Ensure parameters exist (B_cond is lazy)
-    with torch.no_grad():
-        _ = model(X_cond[:, :10, :])
-    print("model device:", next(model.parameters()).device)
+    # ---- Lazy init guard for B_cond ----
+    bcond = getattr(model, "B_cond", None)
+
+    if bcond is None:
+        # Not initialized yet -> trigger it with a tiny forward pass
+        with torch.no_grad():
+            _ = model(X_cond[:, :1, :])
+        bcond = getattr(model, "B_cond", None)
+        if bcond is None:
+            raise RuntimeError(
+                "Model did not create B_cond during forward(). "
+                "Expected lazy init in forward/_maybe_init_B_cond_from_D."
+            )
+        print(f"[train] Initialized B_cond lazily with shape {tuple(bcond.shape)}")
+    else:
+        # Already initialized: sanity check dimensions
+        if bcond.ndim != 2:
+            raise ValueError(f"B_cond should be rank-2 [D,K], got {bcond.shape}")
+        if bcond.shape[0] != D:
+            raise ValueError(
+                f"B_cond already initialized with D={bcond.shape[0]}, "
+                f"but X_cond has D={D}. (Did you change the design matrix?)"
+            )
+        print(f"[train] Using existing B_cond with shape {tuple(bcond.shape)}")
+
+    # Device sanity print (handles models with only buffers + B_cond)
+    first_param = next(model.parameters(), None)
+    if first_param is None:
+        raise RuntimeError("Model has no parameters (did B_cond become a Parameter?)")
+    print("model device:", first_param.device)
+
     opt = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 
     loss_vals, history_steps = [], []
@@ -39,7 +69,9 @@ def train_cbem_trials(
             window = None
         else:
             W = min(int(window_size), T)
-            start = torch.randint(low=0, high=max(1, T - W + 1), size=(1,), device=device).item()
+            start = torch.randint(
+                low=0, high=max(1, T - W + 1), size=(1,), device=device
+            ).item()
             window = torch.arange(start, start + W, device=device, dtype=torch.long)
 
         loss = cbem_penalized_nll_trials(
@@ -53,7 +85,9 @@ def train_cbem_trials(
         loss.backward()
 
         if clip_grad_norm is not None:
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=float(clip_grad_norm))
+            torch.nn.utils.clip_grad_norm_(
+                model.parameters(), max_norm=float(clip_grad_norm)
+            )
 
         opt.step()
 
@@ -66,6 +100,9 @@ def train_cbem_trials(
                 mean_p = float((-torch.expm1(-lam_bt)).mean())
             loss_vals.append(float(loss.detach().cpu()))
             history_steps.append(step)
-            print(f"step {step:5d} | loss {float(loss):.3f} | mean rate {mean_rate_hz:.3f} Hz | mean p {mean_p:.6f}")
+            print(
+                f"step {step:5d} | loss {float(loss):.3f} | "
+                f"mean rate {mean_rate_hz:.3f} Hz | mean p {mean_p:.6f}"
+            )
 
     return model, (history_steps, loss_vals)
