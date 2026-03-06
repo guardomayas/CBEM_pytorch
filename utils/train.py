@@ -15,8 +15,8 @@ def train_cbem_trials(
     print_every=100,
     clip_grad_norm=1.0,
     window_size=None,
-    seed=0,
-):
+    seed=0):
+    
     torch.manual_seed(seed)
     device = X_cond.device
 
@@ -39,7 +39,7 @@ def train_cbem_trials(
                 "Model did not create B_cond during forward(). "
                 "Expected lazy init in forward/_maybe_init_B_cond_from_D."
             )
-        print(f"[train] Initialized B_cond lazily with shape {tuple(bcond.shape)}")
+        print(f"[train] Initialized B_cond with zeros with shape {tuple(bcond.shape)}")
     else:
         # Already initialized: sanity check dimensions
         if bcond.ndim != 2:
