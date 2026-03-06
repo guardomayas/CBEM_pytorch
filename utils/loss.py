@@ -44,14 +44,20 @@ def poisson_nll_truncated_from_spike_bins(rate: torch.Tensor,
 def cbem_penalized_nll_trials(
     model,
     X_btd: torch.Tensor,                 # [B,T,D]
+    basis_matrix: torch.Tensor,                 # [L,P]
     spk_bins_list: list[torch.Tensor],   # length B, each [Nspk_b]
     *,
     window: torch.Tensor | None = None,  # [W] indices into time
-    conductance_penalty=(0.01, 0.001),
+    conductance_penalty=None,
     eps_rate=1e-12
     ):
     """
-    Penalized NLL across trials. Uses one forward pass.
+    Penalized NLL across trials using Bernoulli / truncated-Poisson likelihood
+    for binary spike bins.
+
+    Penalties:
+      - L2 on conductance basis weights ke, ki
+      - second-difference smoothness on reconstructed temporal filters
     """
     B, T, D = X_btd.shape
     device = X_btd.device
@@ -75,8 +81,11 @@ def cbem_penalized_nll_trials(
     rate_bt, aux = model(X_use)               # rate [B,W], aux["gs"] [B,W,2]
     gs = aux["gs"]
 
-    # Poisson NLL up to additive constants:
-    # sum_t lam - sum_{spikes} log(rate)
+    # Bernoulli / truncated-Poisson NLL for binary spike bins:
+    # y_t = 1 if at least one spike occurred in bin t, else 0
+    # with lambda_t = rate_t * binsize_s
+    # NLL_t = lambda_t                        if y_t = 0
+    #       = -log(1 - exp(-lambda_t))        if y_t = 1
     lam = rate_bt * float(model.binsize_s)    # [B,W]
     nll = lam.sum()
 
@@ -89,18 +98,28 @@ def cbem_penalized_nll_trials(
     
      # L2 penalty on conductance filters
     if conductance_penalty is not None:
-        lam_e, lam_i = conductance_penalty
+        lam_e, lam_i, lam_se, lam_si = conductance_penalty
         # if penalize_bias:
         #     ke = model.B_cond[:, 0]
         #     ki = model.B_cond[:, 1]
         # else:
         ke = model.B_cond[:-1, 0]   # assumes last row is bias
         ki = model.B_cond[:-1, 1]
+        
+        f_e = basis_matrix @ ke
+        f_i = basis_matrix @ ki
 
-        pen = 0.5 * (lam_e * torch.sum(ke**2) + lam_i * torch.sum(ki**2))
+        d2_fe = f_e[2:] - 2 * f_e[1:-1] + f_e[:-2]
+        d2_fi = f_i[2:] - 2 * f_i[1:-1] + f_i[:-2]
+        
+        pen_w = 0.5 * (lam_e * torch.sum(ke**2) + lam_i * torch.sum(ki**2))
+        pen_sm = 0.5 * lam_se * torch.sum(d2_fe**2) \
+                + 0.5 * lam_si * torch.sum(d2_fi**2)
     else:
-        pen = 0.0
-    return (nll / B) + pen
+        pen_w =  0.0
+        pen_sm = 0.0
+    # print("Data term: ", nll/B)
+    return (nll / B) + pen_w + pen_sm
 
 def cbem_penalized_nll(model,
                        stimulus: torch.Tensor,

@@ -1,11 +1,11 @@
 import torch
 from .loss import cbem_penalized_nll_trials
-import torch
-from .loss import cbem_penalized_nll_trials
+
 
 def train_cbem_trials(
     model,
     X_cond: torch.Tensor,                 # [B,T,D]
+    basis_matrix: torch.Tensor,           # [L,P]
     spkTimes_bins: list[torch.Tensor],    # length B, each 1D long (spike bins)
     *,
     lr=1e-2,
@@ -77,6 +77,7 @@ def train_cbem_trials(
         loss = cbem_penalized_nll_trials(
             model=model,
             X_btd=X_cond,
+            basis_matrix=basis_matrix,
             spk_bins_list=spkTimes_bins,
             window=window,
             conductance_penalty=conductance_penalty,
