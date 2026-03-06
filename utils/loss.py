@@ -40,6 +40,58 @@ def poisson_nll_truncated_from_spike_bins(rate: torch.Tensor,
         ll[spk_idx] = ll_spike
 
     return -ll.sum()
+  
+def cbem_penalized_nll_trials(
+    model,
+    X_btd: torch.Tensor,                 # [B,T,D]
+    spk_bins_list: list[torch.Tensor],   # length B, each [Nspk_b]
+    *,
+    window: torch.Tensor | None = None,  # [W] indices into time
+    conductance_penalty=(0.01, 0.001),
+    eps_rate=1e-12
+    ):
+    """
+    Penalized NLL across trials. Uses one forward pass.
+    """
+    B, T, D = X_btd.shape
+    device = X_btd.device
+
+    if window is not None:
+        X_use = X_btd[:, window, :]           # [B,W,D]
+        W = window.numel()
+        # shift spikes into local window indices
+        spk_use = []
+        start = int(window[0].item())
+        end   = int(window[-1].item()) + 1
+        for b in range(B):
+            idx = spk_bins_list[b]
+            idxw = idx[(idx >= start) & (idx < end)] - start
+            spk_use.append(idxw)
+    else:
+        X_use = X_btd
+        W = T
+        spk_use = spk_bins_list
+
+    rate_bt, aux = model(X_use)               # rate [B,W], aux["gs"] [B,W,2]
+    gs = aux["gs"]
+
+    # Poisson NLL up to additive constants:
+    # sum_t lam - sum_{spikes} log(rate)
+    lam = rate_bt * float(model.binsize_s)    # [B,W]
+    nll = lam.sum()
+
+        
+    for b in range(B):
+        idx = spk_use[b]
+        if idx.numel() > 0:
+            p_spk = (-torch.expm1(-lam[b, idx])).clamp_min(eps_rate)  # 1-exp(-lam)
+            nll = nll - torch.log(p_spk).sum()
+    if conductance_penalty is not None:
+      lam_e, lam_i = conductance_penalty
+      pen = lam_e * gs[..., 0].mean() + lam_i * gs[..., 1].mean()
+    else: 
+      pen = 0
+    return (nll / B) + pen
 
 def cbem_penalized_nll(model,
                        stimulus: torch.Tensor,
