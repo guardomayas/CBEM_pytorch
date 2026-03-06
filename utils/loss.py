@@ -86,11 +86,20 @@ def cbem_penalized_nll_trials(
         if idx.numel() > 0:
             p_spk = (-torch.expm1(-lam[b, idx])).clamp_min(eps_rate)  # 1-exp(-lam)
             nll = nll - torch.log(p_spk).sum()
+    
+     # L2 penalty on conductance filters
     if conductance_penalty is not None:
-      lam_e, lam_i = conductance_penalty
-      pen = lam_e * gs[..., 0].mean() + lam_i * gs[..., 1].mean()
-    else: 
-      pen = 0
+        lam_e, lam_i = conductance_penalty
+        # if penalize_bias:
+        #     ke = model.B_cond[:, 0]
+        #     ki = model.B_cond[:, 1]
+        # else:
+        ke = model.B_cond[:-1, 0]   # assumes last row is bias
+        ki = model.B_cond[:-1, 1]
+
+        pen = 0.5 * (lam_e * torch.sum(ke**2) + lam_i * torch.sum(ki**2))
+    else:
+        pen = 0.0
     return (nll / B) + pen
 
 def cbem_penalized_nll(model,
