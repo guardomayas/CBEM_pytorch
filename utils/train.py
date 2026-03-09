@@ -10,7 +10,7 @@ def train_cbem_trials(
     *,
     lr=1e-2,
     weight_decay=0.0,
-    conductance_penalty=(0.01, 0.001),
+    conductance_penalty=None,
     n_steps=2000,
     print_every=100,
     clip_grad_norm=1.0,
@@ -99,11 +99,36 @@ def train_cbem_trials(
                 lam_bt = rate_bt * float(model.binsize_s)
                 mean_rate_hz = float(rate_bt.mean())
                 mean_p = float((-torch.expm1(-lam_bt)).mean())
+                if conductance_penalty is not None:
+                    lam_e, lam_i, lam_se, lam_si = conductance_penalty
+                    ke = model.B_cond[:-1, 0]
+                    ki = model.B_cond[:-1, 1]
+
+                    f_e = basis_matrix @ ke
+                    f_i = basis_matrix @ ki
+
+                    d2_fe = f_e[2:] - 2*f_e[1:-1] + f_e[:-2]
+                    d2_fi = f_i[2:] - 2*f_i[1:-1] + f_i[:-2]
+
+                    pen_w = 0.5 * (lam_e * torch.sum(ke**2) + lam_i * torch.sum(ki**2))
+                    pen_sm = 0.5 * lam_se * torch.sum(d2_fe**2) + 0.5 * lam_si * torch.sum(d2_fi**2)
+
+                else: 
+                    pen_w = 0.0
+                    pen_sm = 0.0
+                    
+                data_term = loss - pen_w - pen_sm
+                            
+                
             loss_vals.append(float(loss.detach().cpu()))
             history_steps.append(step)
             print(
-                f"step {step:5d} | loss {float(loss):.3f} | "
-                f"mean rate {mean_rate_hz:.3f} Hz | mean p {mean_p:.6f}"
-            )
+                    f"step {step:5d} | "
+                    f"loss {loss:.3f} | "
+                    f"data {data_term:.3f} | "
+                    f"pen_w {pen_w:.3f} | "
+                    f"pen_sm {pen_sm:.3f} | "
+                    f"mean rate {mean_rate_hz:.3f} Hz"
+                )
 
     return model, (history_steps, loss_vals)
