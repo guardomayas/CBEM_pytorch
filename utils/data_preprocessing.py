@@ -92,7 +92,7 @@ def plot_responses(spk_t_s_train,
         ax.tick_params(axis="x", which="both", bottom=False, labelbottom=False)
 
     for ax in psths:
-        ax.set_ylim(-1,psth_hz.max()+30)
+        ax.set_ylim(-1,psth_hz.max()+10)
 
     raster[0].set_ylabel("Trial")
 
