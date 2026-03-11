@@ -1,4 +1,4 @@
-from ._raised_cosine_basis import convolveStimulusWithBasis_torch
+from .cbem_utils import convolveStimulusWithBasis_torch
 import torch
 from scipy.ndimage import gaussian_filter1d
 from sklearn.metrics import r2_score
