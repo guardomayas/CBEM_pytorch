@@ -114,8 +114,8 @@ def train_cbem_trials(
                     pen_sm = 0.5 * lam_se * torch.sum(d2_fe**2) + 0.5 * lam_si * torch.sum(d2_fi**2)
 
                 else: 
-                    pen_w = 0.0
-                    pen_sm = 0.0
+                    pen_w = torch.tensor(0.0, device=rate_bt.device)
+                    pen_sm = torch.tensor(0.0, device=rate_bt.device)
                     
                 data_term = loss - pen_w - pen_sm
                             
@@ -127,7 +127,7 @@ def train_cbem_trials(
                     f"loss {loss:.3f} | "
                     f"data {data_term:.3f} | "
                     f"pen_w {pen_w:.3f} | "
-                    f"pen_sm {pen_sm:.3f} | "
+                    f"pen_sm {pen_sm:.6e} | "
                     f"mean rate {mean_rate_hz:.3f} Hz"
                 )
 

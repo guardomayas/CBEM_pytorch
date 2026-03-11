@@ -9,7 +9,7 @@ from .cbem_utils import (
 from .CBEM_trials import CBEM_trials
 from .loss import cbem_penalized_nll, cbem_penalized_nll_trials
 from .train import train_cbem_trials
-from .data_preprocessing import preprocess_split
+from .data_preprocessing import preprocess_split, plot_responses
 from .CBEM_lin import CBEM_linear
 
 ## Need to organize this later
@@ -21,7 +21,7 @@ __all__ = [
     "get_voltage_exp_recurrence",
     "get_voltage_exp_recurrence_batched_loop",
     "logOnePlusExpX_torch",
-    "preprocess_split",
+    "preprocess_split", "plot_responses",
     "CBEM_linear",
     "cbem_penalized_nll", "cbem_penalized_nll_trials", "train_cbem_trials"
 ]
