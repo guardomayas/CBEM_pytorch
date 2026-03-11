@@ -32,7 +32,7 @@ def preprocess_split(stim_frames, spk_times_obj,
         t0 = presamples
         t1 = T_cell_full - postsamples
         stim_full = stim_full[:, t0:t1]
-        stim_full = spk_full[:, t0:t1]
+        spk_full = spk_full[:, t0:t1]
         
     return stim_full, spk_full
 
