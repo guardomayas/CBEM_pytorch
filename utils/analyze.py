@@ -38,35 +38,32 @@ def evaluate_model(trained, cbem_lin,
     r2_full = r2_score(psth, rate_hat)
     r2_lin  = r2_score(psth, rate_lin)
     
-    
-    ## Filtes 
-    B_cond_learned = trained.B_cond.detach().cpu()
+    ## Filters 
     # Learned conductance filters in time domain
-    B = trained.B_cond.detach().cpu()   # [D, 2]
-    np.savez("B_trained", B)
+    B = trained.B_cond.detach()   # [D, 2]
     W_orth = B[:-1, :]                  # drop bias row
 
-    # Borth = torch.as_tensor(B_orth, dtype=W_orth.dtype)
-    filters = B_orth_t @ W_orth    
-
+    B_orth_dev = B_orth_t.to(W_orth.device, dtype=W_orth.dtype)
+    filters = B_orth_dev @ W_orth              # same device now  
+    filters_cpu = filters.detach().cpu()
     results = {
         "r2_cbem_full": r2_full,
         "r2_cbem_lin" : r2_lin, 
-        "K_exc"       : filters[:, 0],
-        "K_inh"       : filters[:, 1],
+        "K_exc"       : filters_cpu[:, 0],
+        "K_inh"       : filters_cpu[:, 1],
         "rate_full"   : rate_hat,
         "rate_lin"    : rate_lin
         
     }
     
     if plot: 
-        t_ms = np.arange(filters.shape[0]) * dt * 1e3
+        t_ms = np.arange(filters_cpu.shape[0]) * dt * 1e3
         fig, axes = plt.subplots(1, 2, figsize=(10, 3.8))
-        axes[0].plot(t_ms, filters[:, 0].numpy(), lw=2.0)
+        axes[0].plot(t_ms, filters_cpu[:, 0].numpy(), lw=2.0)
         axes[0].set_title('Excitatory Filter')
         axes[0].set_xlabel('Lag (ms)')
 
-        axes[1].plot(t_ms, filters[:, 1].numpy(), lw=2.0)
+        axes[1].plot(t_ms, filters_cpu[:, 1].numpy(), lw=2.0)
         axes[1].set_title('Inhibitory Filter')
         axes[1].set_xlabel('Lag (ms)')
 
