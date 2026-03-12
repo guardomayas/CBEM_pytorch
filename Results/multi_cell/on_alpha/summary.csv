@@ -1,0 +1,4 @@
+cell_name,cell_type,quadrant,aperture,n_train_trials,n_test_trials,train_mean_rate_hz,test_mean_rate_hz,r2_cbem_lin,r2_cbem_full,final_train_loss_lin,final_train_loss_full,checkpoint_path,metrics_path
+032825Bc6,ON alpha,VT,1200.0,9,6,2.077777777777778,2.283333333333333,0.11003260469918696,0.5845826464376271,151.8269478156963,156.46815128902531,Results/multi_cell/on_alpha/checkpoints/032825Bc6.pt,Results/multi_cell/on_alpha/metrics/032825Bc6.npz
+042225Bc3,ON alpha,VT,600.0,9,6,57.544444444444444,74.25,0.6277484399075315,0.7112659319097168,3153.4257560757756,3138.7265813533027,Results/multi_cell/on_alpha/checkpoints/042225Bc3.pt,Results/multi_cell/on_alpha/metrics/042225Bc3.npz
+052325Bc3,ON alpha,DN,600.0,9,6,44.22222222222222,44.13333333333333,0.5975663626108674,0.7129680379596137,2506.9956888666884,2494.376644812409,Results/multi_cell/on_alpha/checkpoints/052325Bc3.pt,Results/multi_cell/on_alpha/metrics/052325Bc3.npz
